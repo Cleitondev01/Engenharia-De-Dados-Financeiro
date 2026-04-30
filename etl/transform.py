@@ -61,6 +61,17 @@ def transformar_dados():
     ]
     df_cripto['status_mercado'] = np.select(condicoes_cripto, categorias_cripto, default='Oscilação Comum')
 
+
+    # Moedas: Arredondando o câmbio para 2 casas (ex: 4.9886 -> 4.99)
+    df_moedas['valor'] = df_moedas['valor'].round(2)
+
+    # Macros: Garantindo que Selic e IPCA também fiquem com 2 casas
+    df_macro['valor'] = df_macro['valor'].round(2)
+
+
+
+
+
     return df_b3, df_macro, df_moedas, df_cripto
 
 b3, macro, moedas, cripto = transformar_dados()
@@ -68,7 +79,7 @@ b3, macro, moedas, cripto = transformar_dados()
 
 # TRATAMENTO B3
 #print(b3.dtypes)
-print(b3)
+#print(b3)
 
 
 #TRATAMENTO MACROS
@@ -99,23 +110,15 @@ cripto['data'] = pd.to_datetime(cripto['data'], dayfirst=True)
 
 
 
-
-
     # Imprime apenas o resultado final que você quer
-    #print("\n[TABELA B3 TOP 7 MAIORES ALTAS]")
-    #print(df_altas)
-
-    #print("\n[TABELA B3 TOP 7 MAIORES BAIXAS]")
-    #print(df_baixas)
-    
-    #print("\n[TABELA CRIPTOS]")
-    #print(df_cripto)
-
-    #print("\n[TABELA MOEDAS]")
-    #print(df_moedas)
-
-    #print("\n[TABELA MACROS]")
-    #print(df_macro)
+print("\n[TABELA B3]")
+print(b3)
+print("\n[TABELA CRIPTOS]")
+print(cripto)
+print("\n[TABELA MOEDAS]")
+print(moedas)
+print("\n[TABELA MACROS]")
+print(macro)
 
 #if __name__ == "__main__":
 #    transformar_dados()
