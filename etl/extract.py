@@ -1,139 +1,123 @@
 import requests
 import yfinance as yf
 import pandas as pd
+from datetime import datetime
 
+# ==========================================
+# 1. ÍNDICES MACRO (SELIC, CDI, IPCA)
+# ==========================================
 def extrair_indicadores():
-    # Dicionário de séries: Nome -> Código SGS
-    series = {
-        "Selic": "1178",
-        "CDI": "4389",
-        "IPCA": "433"
-    }
-    
-    resultados = {}
-
+    series = {"Selic": "1178", "CDI": "4389", "IPCA": "433"}
+    lista_macro = []
     for nome, codigo in series.items():
         url = f"https://api.bcb.gov.br/dados/serie/bcdata.sgs.{codigo}/dados/ultimos/1?formato=json"
-        
         try:
             response = requests.get(url)
-            response.raise_for_status()
             dados = response.json()
-            
-            # Armazenando o valor e a data
-            resultados[nome] = {
-                "valor": dados[0]['valor'],
+            lista_macro.append({
+                "indicador": nome,
+                "valor": float(dados[0]['valor']), 
                 "data": dados[0]['data']
-            }
-            print(f"Sucesso ao extrair {nome}: {dados[0]['valor']} na data {dados[0]['data']}")
-            
+            })
         except Exception as e:
             print(f"Erro ao extrair {nome}: {e}")
-            
-    return resultados
+    return pd.DataFrame(lista_macro) 
 
-# Execução
-indices = extrair_indicadores()
-
-
-
-# MOEDAS
-
+# ==========================================
+# 2. MOEDAS (CÂMBIO HÍBRIDO)
+# ==========================================
 def extrair_yuan():
     ticker = yf.Ticker("CNYBRL=X")
     dados = ticker.history(period="1d")
-
     valor = float(round(dados["Close"].iloc[-1], 4))
     data = dados.index[-1].strftime("%d/%m/%Y")
-
-    print(f"Sucesso ao extrair Yuan: {valor} na data {data}")
-    return {"valor": valor, "data": data}
-
+    return {"moeda": "Yuan", "valor": valor, "data": data}
 
 def extrair_moedas():
-    series = {
-        "Dolar": "1",
-        "Euro": "21619",
-    }
-
-    resultados = {}
-
+    series = {"Dolar": "1", "Euro": "21619"}
+    lista_moedas = []
     for nome, codigo in series.items():
         url = f"https://api.bcb.gov.br/dados/serie/bcdata.sgs.{codigo}/dados/ultimos/1?formato=json"
-
         try:
             response = requests.get(url)
-            response.raise_for_status()
             dados = response.json()
-
-            resultados[nome] = {
-                "valor": dados[0]['valor'],
+            lista_moedas.append({
+                "moeda": nome,
+                "valor": float(dados[0]['valor']),
                 "data": dados[0]['data']
-            }
-            print(f"Sucesso ao extrair {nome}: {dados[0]['valor']} na data {dados[0]['data']}")
-
+            })
         except Exception as e:
             print(f"Erro ao extrair {nome}: {e}")
+    lista_moedas.append(extrair_yuan())
+    return pd.DataFrame(lista_moedas)
 
-    yuan = extrair_yuan()
-    resultados["Yuan"] = yuan
-
-    return resultados
-
-
-# Teste
-moedas = extrair_moedas()
-print(moedas)
-
-
-# FIN
-
-def extrair_ranking_acoes():
-    # 1. Definimos os tickers (adicione os que desejar monitorar)
+# ==========================================
+# 3. RANKING DE AÇÕES (TOP 7)
+# ==========================================
+def extrair_ranking_completo():
     tickers = [
-        "PETR4.SA", "VALE3.SA", "ITUB4.SA", "MGLU3.SA", "B3SA3.SA", 
-        "BRKM5.SA", "HYPE3.SA", "PETR3.SA", "PRIO3.SA", "SLCE3.SA",
-        "CYRE4.SA", "CSAN3.SA", "BEEF3.SA", "EMBJ3.SA"
+        "PETR4.SA", "PETR3.SA", "VALE3.SA", "ITUB4.SA", "BBDC4.SA", 
+        "ABEV3.SA", "BBAS3.SA", "B3SA3.SA", "MGLU3.SA", "WEGE3.SA", 
+        "HAPV3.SA", "RENT3.SA", "SUZB3.SA", "GGBR4.SA", "JBSS3.SA", 
+        "RAIL3.SA", "EQTL3.SA", "VIVT3.SA", "LREN3.SA", "PRIO3.SA", 
+        "RDOR3.SA", "SBSP3.SA", "CPLE6.SA", "CSAN3.SA", "EMBR3.SA",
+        "BRKM5.SA", "HYPE3.SA", "SLCE3.SA", "ELET3.SA", "MULT3.SA"
     ]
-    
     lista_resultados = []
-
-    print("Extraindo dados da B3...")
     for t in tickers:
         try:
             acao = yf.Ticker(t)
-            # Pegamos os dados de hoje
-            hist = acao.history(period="2d") # Pegamos 2 dias para calcular a variação de ontem para hoje
-            
+            hist = acao.history(period="2d")
             if len(hist) >= 2:
-                preco_atual = hist['Close'].iloc[-1]
-                preco_anterior = hist['Close'].iloc[-2]
-                
-                # Cálculo da variação percentual
-                variacao = ((preco_atual - preco_anterior) / preco_anterior) * 100
-                
+                p_atual = hist['Close'].iloc[-1]
+                p_anterior = hist['Close'].iloc[-2]
+                variacao = ((p_atual - p_anterior) / p_anterior) * 100
                 lista_resultados.append({
                     "ticker": t.replace(".SA", ""),
-                    "preco": round(preco_atual, 2),
+                    "preco": round(p_atual, 2),
                     "variacao": round(variacao, 2)
                 })
-        except Exception as e:
-            print(f"Erro ao extrair {t}: {e}")
+        except: continue
+    df_base = pd.DataFrame(lista_resultados)
+    altas = df_base.sort_values(by="variacao", ascending=False).head(7).reset_index(drop=True)
+    baixas = df_base.sort_values(by="variacao", ascending=True).head(7).reset_index(drop=True)
+    return altas, baixas
 
-    # 2. Transformamos em um DataFrame para rankear fácil
-    df = pd.DataFrame(lista_resultados)
+# ==========================================
+# 4. CRIPTOMOEDAS
+# ==========================================
+def extrair_criptos():
+    tickers_cripto = {"Bitcoin": "BTC-USD", "Ethereum": "ETH-USD", "Solana": "SOL-USD"}
+    try:
+        dolar_data = yf.Ticker("USDBRL=X").history(period="1d")
+        cotacao_dolar = dolar_data['Close'].iloc[-1]
+    except:
+        cotacao_dolar = 5.00 
+    lista_criptos = []
+    for nome, ticker in tickers_cripto.items():
+        try:
+            cripto = yf.Ticker(ticker)
+            hist = cripto.history(period="5d")
+            if not hist.empty:
+                valor_usd = hist['Close'].iloc[-1]
+                valor_anterior_usd = hist['Close'].iloc[-2]
+                valor_brl = valor_usd * cotacao_dolar
+                variacao = ((valor_usd - valor_anterior_usd) / valor_anterior_usd) * 100
+                lista_criptos.append({
+                    "cripto": nome,
+                    "preco_brl": round(valor_brl, 2),
+                    "variacao": round(variacao, 2),
+                    "data": hist.index[-1].strftime("%d/%m/%Y")
+                })
+        except: continue
+    return pd.DataFrame(lista_criptos)
 
-    # 3. Criamos os Rankings
-    maiores_altas = df.sort_values(by="variacao", ascending=False).head(7)
-    maiores_baixas = df.sort_values(by="variacao", ascending=True).head(7)
-
-    return maiores_altas, maiores_baixas
-
-# Executando
-altas, baixas = extrair_ranking_acoes()
-
-print("\n--- MAIORES ALTAS ---")
-print(altas)
-
-print("\n--- MAIORES BAIXAS ---")
-print(baixas)
+# ==========================================
+# TESTE LOCAL (SÓ RODA SE DER PLAY AQUI)
+# ==========================================
+if __name__ == "__main__":
+    print("\n--- MODO DE TESTE (EXTRACT) ---")
+    print(extrair_indicadores())
+    print(extrair_moedas())
+    print(extrair_criptos())
+    print(extrair_ranking_completo())
