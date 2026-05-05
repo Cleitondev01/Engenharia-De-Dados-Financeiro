@@ -1,6 +1,6 @@
 # 📊 Pipeline de Inteligência de Mercado: B3 & Cripto
 
-![Python](https://img.shields.io/badge/Python-3.11-blue?logo=python&logoColor=white)
+![Python](https://img.shields.io/badge/Python-3.14.3-blue?logo=python&logoColor=white)
 ![Apache Airflow](https://img.shields.io/badge/Airflow-3.2.1-017CEE?logo=apacheairflow&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791?logo=postgresql&logoColor=white)
